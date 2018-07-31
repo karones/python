@@ -6,7 +6,7 @@ while (i > -1):
     url = string + str(i) + ".mp3"
     try:
         logo = urllib.request.urlopen(url).read()
-        f = open("/home/karon/av/" + str(i) + ".mp3", 'wb')
+        f = open("/home/karon/av/" + str(i + 1) + ".mp3", 'wb')
         f.write(logo)
         f.close()
         i = i + 1
