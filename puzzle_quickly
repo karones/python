@@ -1,0 +1,14 @@
+import urllib.request
+import sys;
+string = sys.argv[1]
+i = 0;
+while (i > -1):
+    url = string + str(i) + ".mp3"
+    try:
+        logo = urllib.request.urlopen(url).read()
+        f = open("/home/karon/av/" + str(i) + ".mp3", 'wb')
+        f.write(logo)
+        f.close()
+        i = i + 1
+    except Exception as ex:
+        exit(0)
