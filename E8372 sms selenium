@@ -1,0 +1,35 @@
+from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
+from pyvirtualdisplay import Display
+from time import sleep
+import sys;
+
+phone = sys.argv[1]
+textToSend = sys.argv[2]
+
+display = Display(visible=0, size=(1600, 1024))
+display.start()
+
+driver = webdriver.Firefox()
+driver.delete_all_cookies()
+driver.get("http://192.168.8.1/html/home.html")
+sleep(4)
+assert "Mobile" in driver.title
+
+loginButton = driver.find_elements_by_xpath("//*[contains(text(), 'Вход')]")
+for login in loginButton:
+    login.click()
+username = driver.find_element_by_id("username")
+password = driver.find_element_by_id("password")
+username.send_keys('admin')
+password.send_keys('admin')
+driver.find_element_by_id("pop_login").click()
+driver.get("http://192.168.8.1/html/smsinbox.html")
+sleep(3)
+driver.find_element_by_id("span_message").click()
+
+dest = driver.find_element_by_id("recipients_number")
+text = driver.find_element_by_id("message_content")
+dest.send_keys(phone)
+text.send_keys(textToSend)
+driver.find_element_by_id("pop_send").click()
