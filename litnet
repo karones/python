@@ -14,10 +14,10 @@ class litnet:
     authUrl = 'https://litnet.com/auth/login?classic=1&link=https://litnet.com/'
     bookUrl = 'https://litnet.com/reader/mazhor-3-miloserdie-specnaza-b42584?c=338036'
 
-    login = 'jexp@yandex.ru'
-    password = 'fett212'
+    login = 'youlogin'
+    password = 'youpassword'
 
-    fileName = 'major3'
+    fileName = 'book'
 
 
     def __init__(self, showbrowser):
