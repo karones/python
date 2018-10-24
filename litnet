@@ -1,0 +1,169 @@
+import http.cookiejar, urllib.request
+import requests
+import re
+from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
+from pyvirtualdisplay import Display
+from time import sleep
+from random import randint
+
+
+class litnet:
+
+    baseUrl = 'https://litnet.com/'
+    authUrl = 'https://litnet.com/auth/login?classic=1&link=https://litnet.com/'
+    bookUrl = 'https://litnet.com/reader/mazhor-3-miloserdie-specnaza-b42584?c=338036'
+
+    login = 'jexp@yandex.ru'
+    password = 'fett212'
+
+    fileName = 'major3'
+
+
+    def __init__(self, showbrowser):
+        print ('run')
+       # self.auth()
+        display = Display(visible=1, size=(1600, 1024))
+        display.start()
+        if not showbrowser:
+            os.environ['MOZ_HEADLESS'] = '1'
+        self.driver = webdriver.Firefox()
+
+        self.driver.delete_all_cookies()
+        self.initFile()
+        self.doLogin(self.login, self.password)
+        self.getBook()
+        self.closeFile()
+        self.driver.quit()
+
+    def doLogin(self, username, password):
+
+        self.driver.get(self.authUrl)
+        self.driver.execute_script('localStorage.clear();')
+
+        print("s")
+
+      #  print ("\n[+] Facebook Login Page loaded successfully [+]")
+        fbUsername = self.driver.find_element_by_id("loginform-login")
+        fbUsername.send_keys(username)
+        fbPassword = self.driver.find_element_by_id("loginform-password")
+        fbPassword.send_keys(password)
+        self.driver.find_element_by_name("register-button").click()
+        sleep(2)
+        # checks if a notification is in place, which changes the title
+
+
+    def closeFile(self):
+        self.file.close()
+
+    def initFile(self):
+        try:
+            self.file = open(self.fileName, 'a')
+        except Exception as err:
+            self.driver.close()
+            print (err)
+            exit (-1)
+
+    def writeToFile(self, string):
+        try:
+            self.file.write('\n' + string + '\n')
+
+        except Exception as err:
+            self.driver.close()
+            print (err)
+            exit (-1)
+
+    def getBook(self):
+        self.driver.get(self.bookUrl)
+
+        self.findText(self.driver.page_source)
+
+        while (self.checkOnClick(self.driver.page_source)):
+
+            self.findText(self.driver.page_source)
+            time = randint(0, 20)
+            print ('page: ' + str(time))
+            sleep(time)
+
+    def checkOnClick(self, source):
+        list = source.split('class')
+        for string in list:
+            try:
+                if (string.find('link-right') >-1):
+                    if (string.find('pull-right chapter-btn') >-1):
+
+                        self.driver.find_element_by_link_text("СЛЕД. ЧАСТЬ").click()
+                        return True
+                    if (string.find('pull-right') >-1):
+                        if (string.find ('click') > -1 ):
+                            self.driver.find_element_by_link_text("ВПЕРЕД").click()
+                            return True
+                        else:
+                            return
+            except Exception as err:
+                print (err)
+                self.closeFile()
+                self.driver.close()
+        return False
+
+
+
+    def findText(self, source):
+        source = re.sub('<span style="font-size: 0; display: inline; letter-spacing : -14px;">\w+</span>', "", source)
+        #       book = book.replace('</span>', "")
+        list = source.split('\n')
+        for string in list:
+            try:
+                if (string.find('h2') >-1):
+                    m = re.findall(r'\<h2\>(.+)\<\/h2\>', string)
+                    if (len(m) > 0): #название главы
+                        self.writeToFile (m[0])
+                if (string.find('style=\"text-align:') > -1):
+                    m = re.findall(r'\"text-align:\w+\"\>(.+)\<.+\>', string)
+                    temp =  re.sub('\<.+\>', "", m[0])
+                    self.writeToFile (temp)
+            except Exception as err:
+                print (err)
+                self.closeFile()
+                self.driver.close()
+
+    #вариант на запросах без селениума. не реализован
+    def auth (self):
+        try:
+
+            r = requests.get(self.authUrl, headers=self.baseHeader)
+
+        except Exception as err:
+            print (err)
+            exit (-1)
+        spisok = r.text.split('<')
+        csrf = ""
+        for string in spisok:
+            if (string.find("csrf-token") > -1):
+                m = re.findall(r'content\=\"(.+)\"', string)
+                csrf = m[0]
+                break;
+        print (csrf)
+        payload = {'_csrf': csrf, 'LoginForm[login]': self.login, 'LoginForm[password]': self.password, 'ajax':'w0', 'register-button':""}
+        lenght = 0
+        for key, value in payload.items():
+            print(value)
+            lenght = lenght + len(value) + len (key)
+        print (lenght)
+
+        headers = self.baseHeader
+        headers.update({'X-CSRF-Token':csrf, 'X-Request-with':'XMLHttpRequest', 'Content-Length':str(lenght)})
+        r = requests.post('https://litnet.com/auth/login?classic=1&link=https://litnet.com/', data=payload, headers=headers)
+        self.cookie = r.cookies
+        print (r.text)
+        print (r.headers)
+        print(self.cookie)
+        print(r.status_code)
+
+        # r = requests.post(self.baseUrl, cookies=self.cookie, headers=self.baseHeader)
+        # print (r.text)
+        # print(r.status_code)
+
+
+if __name__ == "__main__":
+    litnet(True)
