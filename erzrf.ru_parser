@@ -1,0 +1,178 @@
+import json
+import urllib.request
+import xlsxwriter
+#pip3 install xlsxwriter
+import xml.etree.ElementTree as ET
+import os;
+
+class XLS:
+    work_book = None
+    sheet = None
+    def init(self,name):
+        self.work_book = xlsxwriter.Workbook(r'./result/'+ name +'.xlsx')
+
+    def add_worksheet(self, name):
+        self.sheet = self.work_book.add_worksheet(name)
+        self.sheet.set_column('A:A', 12)
+        self.sheet.set_column('B:B', 12)
+        self.sheet.set_column('C:C', 12)
+        self.sheet.set_column('D:D', 12)
+        self.sheet.set_column('E:E', 12)
+        self.sheet.set_column('F:F', 12)
+        self.sheet.set_column('G:G', 52)
+        self.sheet.set_column('H:H', 12)
+        self.sheet.set_column('I:I', 12)
+        self.sheet.set_column('J:J', 12)
+        self.sheet.set_column('K:K', 12)
+        self.sheet.set_column('L:L', 12)
+        self.sheet.set_column('M:M', 12)
+        self.sheet.set_column('N:N', 12)
+        self.sheet.set_column('O:O', 12)
+        self.sheet.set_column('P:P', 12)
+        self.sheet.set_column('Q:Q', 12)
+        self.sheet.set_column('R:R', 12)
+        self.sheet.set_column('S:S', 12)
+        self.sheet.set_column('T:T', 12)
+
+
+        self.sheet.write(0, 0,  'Название')
+        self.sheet.write(0, 1,   'ID')
+        self.sheet.write(0, 2,   'Вид объекта')
+        self.sheet.write(0, 3,   'Регион')
+        self.sheet.write(0, 4,   'Населенный пункт')
+        self.sheet.write(0, 5,   'Микрорайон')
+        self.sheet.write(0, 6,   'Адрес')
+        self.sheet.write(0, 7,   'Бренд')
+        self.sheet.write(0, 8,  'Застройщик')
+        self.sheet.write(0, 9,   'Стадия строительства')
+        self.sheet.write(0, 10,   'Дата ввода')
+        self.sheet.write(0, 11,   'Класс объекта')
+        self.sheet.write(0, 12,   'Этажность')
+        self.sheet.write(0, 13,   'Жилая площадь')
+        self.sheet.write(0, 14,   'Отделка')
+        self.sheet.write(0, 15,   'Материал наружных стен')
+        self.sheet.write(0, 16,   'Всего квартир')
+        self.sheet.write(0, 17,   'Продается квартир')
+        self.sheet.write(0, 18,   'Подходит квартир')
+        self.sheet.write(0, 19,   'Привлечение средств')
+
+    def write(self, cord, data):
+        self.sheet.write(cord, data)
+    def close(self):
+        self.work_book.close()
+
+class manager:
+    regions = []
+
+
+    def get_json(self):
+        print ('json')
+
+        result =  urllib.request.urlopen("https://erzrf.ru/erz-rest/api/v1/global/dictionary?type=buildings_regions").read()
+        js = json.loads (result)
+      #  print (js)
+        for str in js:
+           # print (str)
+            if (str['id'] == '0' ):
+                continue
+            temp = []
+            temp.append(str['id'])
+            temp.append(str['additional'])
+            self.regions.append(temp)
+
+
+    def get_data(self):
+        print("data")
+     
+        for data in self.regions:
+            xls = XLS()
+            xls.init(data[1][:30])
+            url = "https://erzrf.ru/erz-rest/api/v1/gk/list-map?region=" + data[1] + "&regionKey=" + data[0] + "&costType=1&sortType=rating"
+
+            xls.add_worksheet(data[1][:30])
+            tree = None
+            try:
+                result =  urllib.request.urlopen(url).read()
+                print (result)
+                tree = ET.fromstring(result)
+            except Exception as err:
+                continue
+            row = 1
+            for element in tree.findall('list'):
+                for apartment in element.findall('list'):
+                    print (apartment.find('id').text)
+                                    # tempUrl = https://erzrf.ru/erz-rest/api/v1/apartmentrooms?gkId=8218012001&region=altayskiy-kray&regionKey=144004001&costType=1&sortType=qrooms&porch=1&buildObjectId=8217583001''
+
+
+                    tempUrl ='https://erzrf.ru/erz-rest/api/v1/gk/full_cost_statistics/' +  apartment.find('gkId').text + '?gkId=' +  apartment.find('gkId').text + '&region=' + data[1] +'&regionKey='+ data[0] + '&costType=1&sortType=qrooms'
+                    hom = None
+                    try:
+                        print (tempUrl)
+                        house = urllib.request.urlopen(tempUrl).read()
+                        print (house)
+
+
+                        hom = ET.fromstring(house)
+                    except Exception as err:
+                        continue
+                #    for tem in hom.findall('List'):
+                    for hous in hom.findall('item'):
+                        try:
+                            tempUrl = 'https://erzrf.ru/erz-rest/api/v1/buildinfo/' + hous.find('objectId').text + '?region=' + data[1] +'&regionKey=' + data[0] +'&costType=1&sortType=qrooms'
+                           # print(tempUrl)
+                            build = urllib.request.urlopen(tempUrl).read()
+                            #print (build)
+                            bul =   ET.fromstring(build)
+                            if not apartment.find('gkName') is None:
+                                xls.sheet.write(row, 0,  apartment.find('gkName').text)
+                            if not apartment.find('gkId') is None:
+                                xls.sheet.write(row, 1,  apartment.find('gkId').text)
+                            if not bul.find('buildType') is None:
+                                xls.sheet.write(row, 2,  bul.find('buildType').text) #вид объекта
+                            if not apartment.find('buildingPhase') is None:
+                                xls.sheet.write(row, 3,  apartment.find('buildingPhase').text) #регион
+                            temp = apartment.find('gkAddress').text
+                            array = temp.split(',')
+
+                            xls.sheet.write(row, 4,  array[0]) #город
+                            if not bul.find('microdistrict') is None:
+                                xls.sheet.write(row, 5,  bul.find('microdistrict').text) #микрорайон
+
+                            xls.sheet.write(row, 6,  temp[len(array[0])+2:] + ', ' + hous.find('objectName').text) #адрес
+                            if not bul.find('developerUrlId') is None:
+                                xls.sheet.write(row, 7,  bul.find('developerUrlId').text) #бренд
+                            if not bul.find('developerName') is None:
+                                xls.sheet.write(row, 8,  bul.find('developerName').text) #застройщик
+                            if not hous.find('state') is None:
+                                xls.sheet.write(row, 9,  hous.find('state').text) #стадия0
+                            if not bul.find('endPlan') is None:
+                                xls.sheet.write(row, 10, bul.find('endPlan').text) #Дата ввода
+                            if not bul.find('buildClass') is None:
+                                xls.sheet.write(row, 11, bul.find('buildClass').text) #класс объекта
+                            if not bul.find('floorTo') is None:
+                                xls.sheet.write(row, 12, bul.find('floorTo').text) #этажность
+                            if not bul.find('livingSquare') is None:
+                                xls.sheet.write(row, 13, bul.find('livingSquare').text) #Жилая площадь
+                            if not bul.find('trimType') is None:
+                                xls.sheet.write(row, 14, bul.find('trimType').text) #Отделка
+                            if not bul.find('buildMaterial') is None:
+                                xls.sheet.write(row, 15, bul.find('buildMaterial').text) #Материал наружных стен
+                            if not bul.find('allApartmentCount') is None:
+                                xls.sheet.write(row, 16, bul.find('allApartmentCount').text) #Всего квартир
+                            if not bul.find('sellApartmentCount') is None:
+                                xls.sheet.write(row, 17, bul.find('sellApartmentCount').text) #Продается квартир
+                            if not bul.find('seismicResistance') is None:
+                                xls.sheet.write(row, 18, bul.find('seismicResistance').text) #подходит квартир
+                            if not bul.find('moneyOrg') is None:
+                                xls.sheet.write(row, 19, bul.find('moneyOrg').text) #привличение  средств
+                            row = row +1
+                        except Exception as err:
+                            xls.close()
+
+
+                  #  xls.write('A1', apartment.find('id').text)
+
+            xls.close()
+if __name__ == "__main__":
+    manager().get_json()
+    manager().get_data()
