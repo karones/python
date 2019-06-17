@@ -1,0 +1,94 @@
+from time import time
+from nltk.stem import PorterStemmer, WordNetLemmatizer
+from nltk.corpus import wordnet
+import pickle
+import logging
+import csv
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+from postgresql import POSTGRESQL
+
+class Singleton(type):
+    _instances = {}
+    def __new__(class_, *args, **kwargs):
+        if class_ not in class_._instances:
+            class_._instances[class_] = super(Singleton, class_).__new__(class_, *args, **kwargs)
+        return class_._instances[class_]
+
+class FIRST_MODEL(metaclass=Singleton):
+    def __init__(self, postgres):
+        #Получаем паттерны для оценки характера сообщений
+        try:
+            self.logger = logging.getLogger("NLTK")
+
+            self.postgres = postgres
+            filename = './fit/vectorizer.pk'
+
+            self.vectorizer = pickle.load(open(filename, 'rb'))
+            filename = './fit/16.sav'
+
+            self.loaded_model = pickle.load(open(filename, 'rb'))
+
+
+
+        except Exception as ex:
+            self.logger.critical('Ошибка при получении паттернов в NLTK')
+            self.logger.critical(ex)
+
+
+
+
+
+    def load_data(self):
+
+        data = []
+        type = []
+
+        csvfile = open('./fit/16.csv', 'r',  encoding='Windows-1258')
+
+        reader = csv.reader(csvfile)
+
+        while True: #заранее знаем что в файле есть ошибки
+            try:
+                row = next(reader)
+                data.append(row[5])
+                if row[0] == '4':
+                    type.append(1)
+                else:
+                    type.append(0)
+            except StopIteration as ex:
+                # print (ex)
+                #reader.next()
+                break
+
+            except Exception as ex:
+                # print (ex)
+                #reader.next()
+                continue
+
+
+        return (data, type)
+
+
+    def check_response(self, list, id_prev, db_mess_id, language):
+
+        #0 - negative 1 - positive
+        temp = []
+        message =""
+        for str in list:
+            message +=str
+        temp.append(message)
+
+
+        temp_vectors = self.vectorizer.transform(temp)
+        result = self.loaded_model.predict(temp_vectors)
+        print(result[0])
+        if result[0] ==  1: #positive
+            self.postgres.update_data_to_table_history(db_mess_id, 5, 5)
+            data =  self.postgres.get_new_text( id_prev, 5, language)
+        else:#negative
+            self.postgres.update_data_to_table_history(db_mess_id, 1, 1)
+            data =  self.postgres.get_new_text( id_prev, 1, language)
+
+
+        return data
